@@ -4,7 +4,15 @@ Pin de la rasberry pi
 
 <img src="Assets/pingpio.jfif" alt="pingpio" width="400"/>
 
-## potentiometre grove
+## LED
 
-il faut le brancher sur les port A0,A2,A4,A6.
-on recupère les donner sur le pin avec le même numero que le port. (voir test_potentiometre.py)
+Branchement + sur pin 7 et - sur une GND de base
+
+## Motor
+
+Branchement + sur une 5V et - sur une GND et la troisième sur pin 12
+
+## Potentiometre grove
+
+Il faut le brancher sur les port A0,A2,A4,A6.
+On recupère les données sur le pin avec le même numero que le port. (voir test_potentiometre.py)
