@@ -6,7 +6,7 @@ Pin de la rasberry pi
 
 ## LED
 
-Branchement + sur pin 7 et - sur une GND de base
+Branchement + sur pin 7 et - sur une GND de base. Penser à rajouter une résistance 220Ω.
 
 ## Motor
 
