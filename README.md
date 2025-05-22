@@ -1,6 +1,6 @@
 # Robotcup2025-2026
 
-Pin de la rasberry pi
+Pin de la raspberry pi
 
 <img src="Assets/pingpio.jfif" alt="pingpio" width="400"/>
 
