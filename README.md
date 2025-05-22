@@ -4,6 +4,13 @@ Pin de la raspberry pi
 
 <img src="Assets/pingpio.jfif" alt="pingpio" width="400"/>
 
+## Développement
+
+Avant de commit sur le github bien lancer cette commande :
+`bash commit_verification.sh`
+
+Et vérifier qu'il n'y a pas d'erreurs ni dans le formatage ni dans le code (le dossier [Examples](./Examples/) ne compte pas dans la vérification de format).
+
 ## LED
 
 Branchement + sur pin 7 et - sur une GND de base. Penser à rajouter une résistance 220Ω.
