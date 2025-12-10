@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source ./.venv/bin/activate
+source ./.env/bin/activate
 
 pre-commit install
 
