@@ -67,7 +67,6 @@ class Connection:
         """Create a new connection
         Arguments:
             port {str} -- port to connect to
-            dbLevel {DebugLevel} -- debug level (default: {DebugLevel.ERROR})
         Raises:
             TypeError: if either port is not a string or dbLevel is not a DebugLevel
         """
