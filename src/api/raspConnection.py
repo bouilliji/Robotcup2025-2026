@@ -1,24 +1,12 @@
 import json
+import logging
 import serial_asyncio
-from enum import Enum
 
+# Create handler to show log
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)  # Set console to info level
 
-class DebugLevel(Enum):
-    """Enum for debug levels"""
-
-    ERROR = 0  # only errors are printed
-    WARNING = 1  # errors and warnings are printed
-    FULLDATA = 2  # errors, warnings and full data are printed
-
-
-def warning(dbLevel: DebugLevel, *list):
-    if dbLevel == DebugLevel.WARNING or dbLevel == DebugLevel.FULLDATA:
-        print("[Warning]:", *list)
-
-
-def dataLog(dbLevel: DebugLevel, *list):
-    if dbLevel == DebugLevel.FULLDATA:
-        print("[Info/Data]:", *list)
+logging.getLogger("").addHandler(console)
 
 
 class Connection:
@@ -75,7 +63,7 @@ class Connection:
         def __len__(self):
             return len(str(self))
 
-    def __init__(self, port: str, dbLevel: DebugLevel = DebugLevel.ERROR):
+    def __init__(self, port: str):
         """Create a new connection
         Arguments:
             port {str} -- port to connect to
@@ -83,22 +71,17 @@ class Connection:
         Raises:
             TypeError: if either port is not a string or dbLevel is not a DebugLevel
         """
-        if not isinstance(port, str) or not isinstance(dbLevel, DebugLevel):
-            raise TypeError("Error: type error in arguments")
 
         async def _defaultRaw(_):
-            warning(self.dbLevel, "No handler for raw data")
+            logging.warning("No handler for raw data")
 
         async def _defaultMessage(ordre: str, _):
-            warning(
-                self.dbLevel, f"No handler for ordre {ordre} and no default handler"
-            )
+            logging.warning(f"No handler for ordre {ordre} and no default handler")
 
         self.port = port
         self.toSend = []
         self.state = 1  # 0 = running, 1 = stopped, 2 = error
         self.exitCode = 0
-        self.dbLevel = dbLevel
 
         # functions to call when data is received
         self.onRaw = _defaultRaw
@@ -201,7 +184,7 @@ class Connection:
         # listen for data
         while self.isRunning():
             data = await reader.readexactly(4)
-            dataLog(self.dbLevel, f"Packet received: {data}")
+            logging.info(f"Packet received: {data}")
 
             if data == b"PING":
                 pass
@@ -212,7 +195,7 @@ class Connection:
                 data = str(await reader.readexactly(size))
                 ordre, donnee = data.split("\r\n")
 
-                dataLog(self.dbLevel, f"Data received: {ordre}\r\n{donnee}")
+                logging.info(f"Data received: {ordre}\r\n{donnee}")
 
                 # call the right handler function
                 if ordre in self.handlers:
@@ -223,12 +206,12 @@ class Connection:
                 size = int(await reader.readexactly(int(data[2:]) + 6))
                 data = await reader.readexactly(size)
 
-                dataLog(self.dbLevel, f"Raw data received: \r\n{data}")
+                logging.info(f"Raw data received: \r\n{data}")
 
                 await self.onRaw(data)
 
             elif data[:2] == b"EXT":
-                dataLog(self.dbLevel, f"Exited with code: {data[2:]}")
+                logging.info(f"Exited with code: {data[2:]}")
 
                 self.state = (data[2:] == b"0") + 1
                 return int(str(data[2:]))
@@ -238,12 +221,10 @@ class Connection:
                 if isinstance(data, Connection.Message):
                     size = len(data)
                     if size > 1e9:
-                        warning(
-                            self.dbLevel, "Data too big message not sended, size > 1e9"
-                        )
+                        logging.warning("Data too big message not sended, size > 1e9")
                         continue
 
-                    dataLog(self.dbLevel, f"Data sent: {data}")
+                    logging.info(f"Data sent: {data}")
 
                     writer.write(
                         f"DAT{len(str(size))}\r\n{size}\r\n\r\n{data}".encode("utf-8")
@@ -251,12 +232,10 @@ class Connection:
                 else:
                     size = len(data)
                     if size > 1e9:
-                        warning(
-                            self.dbLevel, "Data too big message not sended, size > 1e9"
-                        )
+                        logging.warning("Data too big message not sended, size > 1e9")
                         continue
 
-                    dataLog(self.dbLevel, f"Data sent: {data}")
+                    logging.info(f"Data sent: {data}")
 
                     if isinstance(data, str):
                         data = data.encode("utf-8")
