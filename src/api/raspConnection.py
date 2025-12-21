@@ -1,5 +1,6 @@
 import json
 import logging
+<<<<<<< HEAD
 import serial
 import threading
 import time
@@ -11,6 +12,17 @@ console = logging.StreamHandler()
 logging.getLogger("").setLevel(logging.INFO)
 logging.getLogger("").addHandler(console)
 
+=======
+import serial_asyncio
+
+# Create handler to show log
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)  # Set console to info level
+
+logging.getLogger("").addHandler(console)
+
+
+>>>>>>> e92147c (Logging in api + new project structure)
 class Connection:
     """Connection class to communicate with the raspberry pi
 
@@ -22,6 +34,10 @@ class Connection:
         onMessage {function} -- function to call when ordonated data is received
         handlers {dict} -- dictionary of functions to call when ordonated data is received
         exitCode {int} -- exit code to send when stopping the connection
+<<<<<<< HEAD
+=======
+        dbLevel {DebugLevel} -- debug level
+>>>>>>> e92147c (Logging in api + new project structure)
 
     Methods:
         __init__(port: str) -> None: create a new connection
@@ -68,14 +84,25 @@ class Connection:
         """Create a new connection
         Arguments:
             port {str} -- port to connect to
+<<<<<<< HEAD
+=======
+            dbLevel {DebugLevel} -- debug level (default: {DebugLevel.ERROR})
+>>>>>>> e92147c (Logging in api + new project structure)
         Raises:
             TypeError: if either port is not a string or dbLevel is not a DebugLevel
         """
 
+<<<<<<< HEAD
         def _defaultRaw(_):
             logging.warning("No handler for raw data")
 
         def _defaultMessage(ordre: str, _):
+=======
+        async def _defaultRaw(_):
+            logging.warning("No handler for raw data")
+
+        async def _defaultMessage(ordre: str, _):
+>>>>>>> e92147c (Logging in api + new project structure)
             logging.warning(f"No handler for ordre {ordre} and no default handler")
 
         self.port = port
@@ -118,7 +145,11 @@ class Connection:
 
         return decorator
 
+<<<<<<< HEAD
     def send(self, ordre: str, data) -> None:  # used to send ordonated data
+=======
+    async def send(self, ordre: str, data) -> None:  # used to send ordonated data
+>>>>>>> e92147c (Logging in api + new project structure)
         """Send ordonated data to the raspberry pi
         Arguments:
             ordre {str} -- ordre to send
@@ -130,7 +161,11 @@ class Connection:
             raise TypeError("Error: ordre must be a string")
         self.toSend.append(Connection.Message(ordre, data))
 
+<<<<<<< HEAD
     def sendRaw(self, data) -> None:
+=======
+    async def sendRaw(self, data) -> None:
+>>>>>>> e92147c (Logging in api + new project structure)
         """Send raw data to the raspberry pi
         Arguments:
             data {bytes} -- data to send
@@ -141,21 +176,33 @@ class Connection:
             raise TypeError("Error: raw data must be bytes")
         self.toSend.append(data)
 
+<<<<<<< HEAD
     def isRunning(self) -> bool:
+=======
+    async def isRunning(self) -> bool:
+>>>>>>> e92147c (Logging in api + new project structure)
         """Verify if the connection is still running
         Returns:
             bool -- True if the connection is still running
         """
         return self.state == 0
 
+<<<<<<< HEAD
     def isLate(self) -> bool:  # to many messages are in the queue
+=======
+    async def isLate(self) -> bool:  # to many messages are in the queue
+>>>>>>> e92147c (Logging in api + new project structure)
         """Verify if there is too many messages in the queue
         Returns:
             bool -- True if there is too many messages in the queue
         """
         return len(self.toSend) > 10
 
+<<<<<<< HEAD
     def start(self, baudrate: int = 115200) -> int:
+=======
+    async def start(self, baudrate: int = 115200) -> int:
+>>>>>>> e92147c (Logging in api + new project structure)
         """Start the connection and listen for data
         Arguments:
             baudrate {int} -- baudrate of the serial connection (default: {115200})
@@ -170,6 +217,7 @@ class Connection:
         if not isinstance(baudrate, int):
             raise TypeError("Error: baudrate must be an integer")
 
+<<<<<<< HEAD
         logging.info("Starting...")
 
         # open serial connection
@@ -285,6 +333,92 @@ class Connection:
 
     def stop(self, code):
         """Stop the connection and send an exit signal
+=======
+        # open serial connection
+        reader, writer = await serial_asyncio.open_serial_connection(
+            url=self.port, baudrate=baudrate
+        )
+
+        self.state = 0
+
+        # send first ping
+        writer.write(b"PING")
+        await writer.drain()
+
+        # listen for data
+        while self.isRunning():
+            data = await reader.readexactly(4)
+            logging.info(f"Packet received: {data}")
+
+            if data == b"PING":
+                pass
+
+            elif data[:2] == b"DAT":
+                # read data
+                size = int(await reader.readexactly(int(data[2:]) + 6))
+                data = str(await reader.readexactly(size))
+                ordre, donnee = data.split("\r\n")
+
+                logging.info(f"Data received: {ordre}\r\n{donnee}")
+
+                # call the right handler function
+                if ordre in self.handlers:
+                    await self.handlers[ordre](json.loads(donnee))
+                else:
+                    await self.onMessage(ordre, json.loads(donnee))
+            elif data[:2] == b"RAW":
+                size = int(await reader.readexactly(int(data[2:]) + 6))
+                data = await reader.readexactly(size)
+
+                logging.info(f"Raw data received: \r\n{data}")
+
+                await self.onRaw(data)
+
+            elif data[:2] == b"EXT":
+                logging.info(f"Exited with code: {data[2:]}")
+
+                self.state = (data[2:] == b"0") + 1
+                return int(str(data[2:]))
+
+            elif len(self.toSend) > 0:
+                data = self.toSend.pop(0)
+                if isinstance(data, Connection.Message):
+                    size = len(data)
+                    if size > 1e9:
+                        logging.warning("Data too big message not sended, size > 1e9")
+                        continue
+
+                    logging.info(f"Data sent: {data}")
+
+                    writer.write(
+                        f"DAT{len(str(size))}\r\n{size}\r\n\r\n{data}".encode("utf-8")
+                    )
+                else:
+                    size = len(data)
+                    if size > 1e9:
+                        logging.warning("Data too big message not sended, size > 1e9")
+                        continue
+
+                    logging.info(f"Data sent: {data}")
+
+                    if isinstance(data, str):
+                        data = data.encode("utf-8")
+
+                    writer.write(
+                        f"RAW{len(str(size))}\r\n{size}\r\n\r\n".encode("utf-8") + data
+                    )
+            else:
+                writer.write(b"PING")
+            await writer.drain()
+
+        writer.write(f"EXT{self.exitCode}".encode("utf-8"))
+        await writer.drain()
+        writer.close()
+        return self.exitCode
+
+    async def stop(self, code):
+        """Stop the connection and send a exit signal
+>>>>>>> e92147c (Logging in api + new project structure)
         Arguments:
             code {int} -- exit code must be between 0 and 9 (0 = success, 1-9 = error)
 
@@ -300,13 +434,17 @@ class Connection:
         if code < 0 or code > 9:
             raise ValueError("Error: code must be between 0 and 9")
 
+<<<<<<< HEAD
         logging.info("Stopping...")
 
+=======
+>>>>>>> e92147c (Logging in api + new project structure)
         self.exitCode = code
         if code == 0:
             self.state = 1
         else:
             self.state = 2
+<<<<<<< HEAD
 
 
 def create_ports(port1: str, port2: str) -> subprocess.Popen:
@@ -333,3 +471,5 @@ def create_ports(port1: str, port2: str) -> subprocess.Popen:
     logging.info(f"Ports {port1} and {port2} created")
 
     return proc  # Return the process
+=======
+>>>>>>> e92147c (Logging in api + new project structure)
