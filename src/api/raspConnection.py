@@ -20,7 +20,6 @@ class Connection:
         onMessage {function} -- function to call when ordonated data is received
         handlers {dict} -- dictionary of functions to call when ordonated data is received
         exitCode {int} -- exit code to send when stopping the connection
-        dbLevel {DebugLevel} -- debug level
 
     Methods:
         __init__(port: str) -> None: create a new connection
@@ -182,12 +181,12 @@ class Connection:
 
         # listen for data
         while self.isRunning():
-            data = await reader.readexactly(4)
+            data = await reader.readexactly(4) # header of packet /in {DAT0, RAW0, PING, EXT0}
             logging.info(f"Packet received: {data}")
 
+            # handling incoming packet
             if data == b"PING":
                 pass
-
             elif data[:2] == b"DAT":
                 # read data
                 size = int(await reader.readexactly(int(data[2:]) + 6))
@@ -214,8 +213,11 @@ class Connection:
 
                 self.state = (data[2:] == b"0") + 1
                 return int(str(data[2:]))
+            else:
+                logging.error(f"Recieved an unknown header : {data}")
 
-            elif len(self.toSend) > 0:
+            # handling response
+            if len(self.toSend) > 0:
                 data = self.toSend.pop(0)
                 if isinstance(data, Connection.Message):
                     size = len(data)
@@ -246,6 +248,7 @@ class Connection:
                 writer.write(b"PING")
             await writer.drain()
 
+        # closing connection
         writer.write(f"EXT{self.exitCode}".encode("utf-8"))
         await writer.drain()
         writer.close()
