@@ -2,6 +2,7 @@ import json
 import logging
 import serial
 import threading
+import time
 
 # Create handler to show log
 console = logging.StreamHandler()
@@ -170,42 +171,51 @@ class Connection:
             raise TypeError("Error: baudrate must be an integer")
 
         # open serial connection
-        ser = serial.Serial(self.port, baudrate)
+        set = serial.Serial(self.port, baudrate)
         self.state = 0
 
         # send first ping
-        ser.write(b"PING")
-        ser.flush()
+        set.write(b"PING")
+        set.flush()
+
+        while set.in_waiting == 0:
+            logging.warning("No response")
 
         def listen_for_data():
             while self.isRunning():
-                data = ser.read(4)  # header of packet /in {DAT0, RAW0, PING, EXT0}
+                data = set.read(4)  # header of packet /in {DAT0, RAW0, PING, EXT0}
                 logging.info(f"Packet received: {data}")
 
                 # handling incoming packet
                 if data == b"PING":
                     pass
-                elif data[:2] == b"DAT":
+                elif data[:3] == b"DAT":
                     # read data
-                    size = int(ser.read(int(data[2:]) + 6))
-                    data = str(ser.read(size))
-                    ordre, donnee = data.split("\r\n")
+                    size = int(set.read(int(data[3:]) + 6))
+                    data = str(set.read(size))
+                    ordre, donnee = data[2 : len(data) - 1].split("\\r\\n")
 
                     logging.info(f"Data received: {ordre}\r\n{donnee}")
 
                     # call the right handler function
                     if ordre in self.handlers:
-                        handler_thread = threading.Thread(target=self.handlers[ordre], args=(json.loads(donnee),))
-                        handler_thread.daemon = True  # Make thread a daemon so it won't block program exit
+                        handler_thread = threading.Thread(
+                            target=self.handlers[ordre], args=(json.loads(donnee),)
+                        )
+                        handler_thread.daemon = (
+                            True  # Make thread a daemon so it won't block program exit
+                        )
                         handler_thread.start()
                     else:
                         # Default handler for messages
-                        handler_thread = threading.Thread(target=self.onMessage, args=(ordre, json.loads(donnee)))
+                        handler_thread = threading.Thread(
+                            target=self.onMessage, args=(ordre, json.loads(donnee))
+                        )
                         handler_thread.daemon = True
                         handler_thread.start()
-                elif data[:2] == b"RAW":
-                    size = int(ser.read(int(data[2:]) + 6))
-                    data = ser.read(size)
+                elif data[:3] == b"RAW":
+                    size = int(set.read(int(data[3:]) + 6))
+                    data = set.read(size)
 
                     logging.info(f"Raw data received: \r\n{data}")
 
@@ -214,11 +224,11 @@ class Connection:
                     handler_thread.daemon = True
                     handler_thread.start()
 
-                elif data[:2] == b"EXT":
-                    logging.info(f"Exited with code: {data[2:]}")
+                elif data[:3] == b"EXT":
+                    logging.info(f"Exited with code: {data[3:]}")
 
-                    self.state = (data[2:] == b"0") + 1
-                    return int(str(data[2:]))
+                    self.state = (data[3:] == b"0") + 1
+                    return int(str(data[3:]))
                 else:
                     logging.error(f"Received an unknown header: {data}")
 
@@ -228,15 +238,25 @@ class Connection:
                     if isinstance(data, Connection.Message):
                         size = len(data)
                         if size > 1e9:
-                            logging.warning("Data too big, message not sent, size > 1e9")
+                            logging.warning(
+                                "Data too big, message not sent, size > 1e9"
+                            )
                             continue
 
                         logging.info(f"Data sent: {data}")
-                        ser.write(f"DAT{len(str(size))}\r\n{size}\r\n\r\n{data}".encode("utf-8"))
+                        set.write(
+                            f"DAT{len(str(size))}\r\n{size}\r\n\r\n{data}".encode(
+                                "utf-8"
+                            )
+                        )
+                        while set.in_waiting == 0:
+                            logging.warning("No response")
                     else:
                         size = len(data)
                         if size > 1e9:
-                            logging.warning("Data too big, message not sent, size > 1e9")
+                            logging.warning(
+                                "Data too big, message not sent, size > 1e9"
+                            )
                             continue
 
                         logging.info(f"Data sent: {data}")
@@ -244,10 +264,17 @@ class Connection:
                         if isinstance(data, str):
                             data = data.encode("utf-8")
 
-                        ser.write(f"RAW{len(str(size))}\r\n{size}\r\n\r\n".encode("utf-8") + data)
+                        set.write(
+                            f"RAW{len(str(size))}\r\n{size}\r\n\r\n".encode("utf-8")
+                            + data
+                        )
+                        while set.in_waiting == 0:
+                            logging.warning("No response")
                 else:
-                    ser.write(b"PING")
-                ser.flush()
+                    set.write(b"PING")
+                set.flush()
+
+                time.sleep(0.5)
 
         # Create a thread for listening to incoming data
         listener_thread = threading.Thread(target=listen_for_data)
