@@ -1,6 +1,7 @@
 import json
 import logging
-import serial_asyncio
+import serial
+import threading
 
 # Create handler to show log
 console = logging.StreamHandler()
@@ -70,10 +71,10 @@ class Connection:
             TypeError: if either port is not a string or dbLevel is not a DebugLevel
         """
 
-        async def _defaultRaw(_):
+        def _defaultRaw(_):
             logging.warning("No handler for raw data")
 
-        async def _defaultMessage(ordre: str, _):
+        def _defaultMessage(ordre: str, _):
             logging.warning(f"No handler for ordre {ordre} and no default handler")
 
         self.port = port
@@ -116,7 +117,7 @@ class Connection:
 
         return decorator
 
-    async def send(self, ordre: str, data) -> None:  # used to send ordonated data
+    def send(self, ordre: str, data) -> None:  # used to send ordonated data
         """Send ordonated data to the raspberry pi
         Arguments:
             ordre {str} -- ordre to send
@@ -128,7 +129,7 @@ class Connection:
             raise TypeError("Error: ordre must be a string")
         self.toSend.append(Connection.Message(ordre, data))
 
-    async def sendRaw(self, data) -> None:
+    def sendRaw(self, data) -> None:
         """Send raw data to the raspberry pi
         Arguments:
             data {bytes} -- data to send
@@ -139,21 +140,21 @@ class Connection:
             raise TypeError("Error: raw data must be bytes")
         self.toSend.append(data)
 
-    async def isRunning(self) -> bool:
+    def isRunning(self) -> bool:
         """Verify if the connection is still running
         Returns:
             bool -- True if the connection is still running
         """
         return self.state == 0
 
-    async def isLate(self) -> bool:  # to many messages are in the queue
+    def isLate(self) -> bool:  # to many messages are in the queue
         """Verify if there is too many messages in the queue
         Returns:
             bool -- True if there is too many messages in the queue
         """
         return len(self.toSend) > 10
 
-    async def start(self, baudrate: int = 115200) -> int:
+    def start(self, baudrate: int = 115200) -> int:
         """Start the connection and listen for data
         Arguments:
             baudrate {int} -- baudrate of the serial connection (default: {115200})
@@ -169,93 +170,93 @@ class Connection:
             raise TypeError("Error: baudrate must be an integer")
 
         # open serial connection
-        reader, writer = await serial_asyncio.open_serial_connection(
-            url=self.port, baudrate=baudrate
-        )
-
+        ser = serial.Serial(self.port, baudrate)
         self.state = 0
 
         # send first ping
-        writer.write(b"PING")
-        await writer.drain()
+        ser.write(b"PING")
+        ser.flush()
 
-        # listen for data
-        while self.isRunning():
-            data = await reader.readexactly(4) # header of packet /in {DAT0, RAW0, PING, EXT0}
-            logging.info(f"Packet received: {data}")
+        def listen_for_data():
+            while self.isRunning():
+                data = ser.read(4)  # header of packet /in {DAT0, RAW0, PING, EXT0}
+                logging.info(f"Packet received: {data}")
 
-            # handling incoming packet
-            if data == b"PING":
-                pass
-            elif data[:2] == b"DAT":
-                # read data
-                size = int(await reader.readexactly(int(data[2:]) + 6))
-                data = str(await reader.readexactly(size))
-                ordre, donnee = data.split("\r\n")
+                # handling incoming packet
+                if data == b"PING":
+                    pass
+                elif data[:2] == b"DAT":
+                    # read data
+                    size = int(ser.read(int(data[2:]) + 6))
+                    data = str(ser.read(size))
+                    ordre, donnee = data.split("\r\n")
 
-                logging.info(f"Data received: {ordre}\r\n{donnee}")
+                    logging.info(f"Data received: {ordre}\r\n{donnee}")
 
-                # call the right handler function
-                if ordre in self.handlers:
-                    await self.handlers[ordre](json.loads(donnee))
+                    # call the right handler function
+                    if ordre in self.handlers:
+                        handler_thread = threading.Thread(target=self.handlers[ordre], args=(json.loads(donnee),))
+                        handler_thread.daemon = True  # Make thread a daemon so it won't block program exit
+                        handler_thread.start()
+                    else:
+                        # Default handler for messages
+                        handler_thread = threading.Thread(target=self.onMessage, args=(ordre, json.loads(donnee)))
+                        handler_thread.daemon = True
+                        handler_thread.start()
+                elif data[:2] == b"RAW":
+                    size = int(ser.read(int(data[2:]) + 6))
+                    data = ser.read(size)
+
+                    logging.info(f"Raw data received: \r\n{data}")
+
+                    # Handle raw data in a separate thread
+                    handler_thread = threading.Thread(target=self.onRaw, args=(data,))
+                    handler_thread.daemon = True
+                    handler_thread.start()
+
+                elif data[:2] == b"EXT":
+                    logging.info(f"Exited with code: {data[2:]}")
+
+                    self.state = (data[2:] == b"0") + 1
+                    return int(str(data[2:]))
                 else:
-                    await self.onMessage(ordre, json.loads(donnee))
-            elif data[:2] == b"RAW":
-                size = int(await reader.readexactly(int(data[2:]) + 6))
-                data = await reader.readexactly(size)
+                    logging.error(f"Received an unknown header: {data}")
 
-                logging.info(f"Raw data received: \r\n{data}")
+                # handling response
+                if len(self.toSend) > 0:
+                    data = self.toSend.pop(0)
+                    if isinstance(data, Connection.Message):
+                        size = len(data)
+                        if size > 1e9:
+                            logging.warning("Data too big, message not sent, size > 1e9")
+                            continue
 
-                await self.onRaw(data)
+                        logging.info(f"Data sent: {data}")
+                        ser.write(f"DAT{len(str(size))}\r\n{size}\r\n\r\n{data}".encode("utf-8"))
+                    else:
+                        size = len(data)
+                        if size > 1e9:
+                            logging.warning("Data too big, message not sent, size > 1e9")
+                            continue
 
-            elif data[:2] == b"EXT":
-                logging.info(f"Exited with code: {data[2:]}")
+                        logging.info(f"Data sent: {data}")
 
-                self.state = (data[2:] == b"0") + 1
-                return int(str(data[2:]))
-            else:
-                logging.error(f"Recieved an unknown header : {data}")
+                        if isinstance(data, str):
+                            data = data.encode("utf-8")
 
-            # handling response
-            if len(self.toSend) > 0:
-                data = self.toSend.pop(0)
-                if isinstance(data, Connection.Message):
-                    size = len(data)
-                    if size > 1e9:
-                        logging.warning("Data too big message not sended, size > 1e9")
-                        continue
-
-                    logging.info(f"Data sent: {data}")
-
-                    writer.write(
-                        f"DAT{len(str(size))}\r\n{size}\r\n\r\n{data}".encode("utf-8")
-                    )
+                        ser.write(f"RAW{len(str(size))}\r\n{size}\r\n\r\n".encode("utf-8") + data)
                 else:
-                    size = len(data)
-                    if size > 1e9:
-                        logging.warning("Data too big message not sended, size > 1e9")
-                        continue
+                    ser.write(b"PING")
+                ser.flush()
 
-                    logging.info(f"Data sent: {data}")
+        # Create a thread for listening to incoming data
+        listener_thread = threading.Thread(target=listen_for_data)
+        listener_thread.start()
 
-                    if isinstance(data, str):
-                        data = data.encode("utf-8")
-
-                    writer.write(
-                        f"RAW{len(str(size))}\r\n{size}\r\n\r\n".encode("utf-8") + data
-                    )
-            else:
-                writer.write(b"PING")
-            await writer.drain()
-
-        # closing connection
-        writer.write(f"EXT{self.exitCode}".encode("utf-8"))
-        await writer.drain()
-        writer.close()
         return self.exitCode
 
-    async def stop(self, code):
-        """Stop the connection and send a exit signal
+    def stop(self, code):
+        """Stop the connection and send an exit signal
         Arguments:
             code {int} -- exit code must be between 0 and 9 (0 = success, 1-9 = error)
 
