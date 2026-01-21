@@ -174,13 +174,17 @@ class Connection:
         logging.info("Starting...")
 
         # open serial connection
-        set = serial.Serial(self.port, baudrate)
+        seri = serial.Serial(self.port, baudrate)
         self.state = 0
+
+        # send first ping
+        seri.write(b"PING")
+        seri.flush()
 
         def listen_for_data():
             while self.isRunning():
-                if set.in_waiting != 0:
-                    data = set.read(4)  # header of packet /in {DAT0, RAW0, PING, EXT0}
+                if seri.in_waiting != 0:
+                    data = seri.read(4)  # header of packet /in {DAT0, RAW0, PING, EXT0}
                     logging.info(f"Packet received: {data}")
 
                     # handling incoming packet
@@ -188,8 +192,8 @@ class Connection:
                         pass
                     elif data[:3] == b"DAT":
                         # read data
-                        size = int(set.read(int(data[3:]) + 6))
-                        data = str(set.read(size))
+                        size = int(seri.read(int(data[3:]) + 6))
+                        data = str(seri.read(size))
                         ordre, donnee = data[2 : len(data) - 1].split("\\r\\n")
 
                         logging.info(f"Data received: {ordre}\r\n{donnee}")
@@ -209,8 +213,8 @@ class Connection:
                             handler_thread.daemon = True
                             handler_thread.start()
                     elif data[:3] == b"RAW":
-                        size = int(set.read(int(data[3:]) + 6))
-                        data = set.read(size)
+                        size = int(seri.read(int(data[3:]) + 6))
+                        data = seri.read(size)
 
                         logging.info(f"Raw data received: \r\n{data}")
 
@@ -241,7 +245,7 @@ class Connection:
                                 continue
 
                             logging.info(f"Data sent: {data}")
-                            set.write(
+                            seri.write(
                                 f"DAT{len(str(size))}\r\n{size}\r\n\r\n{data}".encode(
                                     "utf-8"
                                 )
@@ -259,13 +263,13 @@ class Connection:
                             if isinstance(data, str):
                                 data = data.encode("utf-8")
 
-                            set.write(
+                            seri.write(
                                 f"RAW{len(str(size))}\r\n{size}\r\n\r\n".encode("utf-8")
                                 + data
                             )
                     else:
-                        set.write(b"PING")
-                    set.flush()
+                        seri.write(b"PING")
+                    seri.flush()
                 else:
                     logging.warning("No response")
                     time.sleep(0.1)
@@ -319,9 +323,14 @@ def create_ports(port1: str, port2: str) -> subprocess.Popen:
         None
     """
 
+    # Command to create ports with socat
     proc = subprocess.Popen(
         f"socat -d -d PTY,link={port1},raw,echo=0 PTY,link={port2},raw,echo=0",
         shell=True,
     )
 
-    return proc
+    time.sleep(2)  # Wait for creation of the ports
+
+    logging.info(f"Ports {port1} and {port2} created")
+
+    return proc  # Return the process
