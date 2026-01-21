@@ -1,0 +1,5 @@
+{
+    "port1": "/tmp/ttyV10",
+    "port2": "/tmp/ttyV15",
+    "message": "42"
+}
