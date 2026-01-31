@@ -1,94 +1,104 @@
-from api.raspConnection import Connection
-import asyncio
-import json
+import sys
 
-connectionSensor = Connection("jepasencoreleport")
-connectionActuator = Connection("jepasencoreleport")
-connectionAI = Connection("jepasencoreleport")
-connectionSL = Connection("jepasencoreleport")
+sys.path.insert(0, "path to /src/")
+
+from api.raspConnection import Connection, create_ports
+
+
+#le serveur de traitement est sur les port paire
+portSensor = create_ports("/tmp/ttyV0", "/tmp/ttyV1")
+portActuator = create_ports("/tmp/ttyV2", "/tmp/ttyV3")
+portAI = create_ports("/tmp/ttyV4", "/tmp/ttyV5")
+portSL = create_ports("/tmp/ttyV6", "/tmp/ttyV7")
+
+connectionSensor = Connection("/tmp/ttyV0")
+connectionActuator = Connection("/tmp/ttyV2")
+connectionAI = Connection("/tmp/ttyV4")
+connectionSL = Connection("/tmp/ttyV6")
 
 mode = 'followed by line'
 
 @connectionSensor.on("lineSensor")
-async def line_sensor(data):
-    await connectionSL.send("lineSensor", data)
+def line_sensor(data):
+    connectionSL.send("lineSensor", data)
 
 @connectionSensor.on("colorSensor")
-async def color_sensor(data):
-    data = json.loads(data)
+def color_sensor(data):
     color = data["color"]
 
     if int(color[:2]) < 160 and int(color[2:4]) > 240 and int(color[4:]) < 160:
-        await connectionSL.send('interupt', json.dumps({'interuptionType' : f'greenSquare{data["side"]}'}))
+        connectionSL.send('interupt', f'greenSquare{data["side"]}')
 
     if int(color[:2]) < 160 and int(color[2:4]) > 240 and int(color[4:]) < 160:
         mode = 'ball collection'
 
 @connectionSensor.on("distanceSensor")
-async def distance_sensor(data):
-    data = json.loads(data)
+def distance_sensor(data):
     distance = data["distance"]
 
     if distance < 20:
-        await connectionSL.send('interupt', json.dumps({'interuptionType' : 'objectJustInFront'}))
+        connectionSL.send('interupt','objectJustInFront')
 
 
 @connectionSL.on('motor')
-async def motor(data):
+def motor(data):
     if mode == 'followed by line':
-        await connectionActuator.send("motor", data)
+        connectionActuator.send("motor", data)
 
 @connectionSL.on('motorWhile')
-async def motor_while(data):
+def motor_while(data):
     if mode == 'followed by line':
-        await connectionActuator.send("motorWhile", data)
+        connectionActuator.send("motorWhile", data)
 
 @connectionAI.on('motor')
-async def motor(data):
+def motor(data):
     if mode == 'ball collection':
-        await connectionActuator.send("motor", data)
+        connectionActuator.send("motor", data)
 
 @connectionAI.on('motorWhile')
-async def motor_while(data):
+def motor_while(data):
     if mode == 'ball collection':
-        await connectionActuator.send("motorWhile", data)
+        connectionActuator.send("motorWhile", data)
 
 @connectionAI.on('servoMotor')
-async def servo_motor(data):
+def servo_motor(data):
     if mode == 'ball collection':
-        await connectionActuator.send("servoMotor", data)
+        connectionActuator.send("servoMotor", data)
 
     
-async def main():
+def main():
     try:
-
-        await asyncio.gather(
-            connectionSensor.start(),
-            connectionActuator.start(),
-            connectionAI.start(),
-            connectionSL.start(),
-        )
+        connectionSensor.start()
+        connectionActuator.start()
+        connectionAI.start()
+        connectionSL.start()
 
     except KeyboardInterrupt:
 
-        await asyncio.gather(
-            connectionSensor.stop(0),
-            connectionActuator.stop(0),
-            connectionAI.stop(0),
-            connectionSL.stop(0),
-        )
+        connectionSensor.stop(0)
+        connectionActuator.stop(0)
+        connectionAI.stop(0)
+        connectionSL.stop(0)
+
+        portSensor.kill()
+        portActuator.kill()
+        portAI.kill()
+        portSL.kill()
 
     except Exception as e:
 
-        await asyncio.gather(
-            connectionSensor.stop(2),
-            connectionActuator.stop(2),
-            connectionAI.stop(2),
-            connectionSL.stop(2),
-        )
+        connectionSensor.stop(2)
+        connectionActuator.stop(2)
+        connectionAI.stop(2)
+        connectionSL.stop(2)
+
+        portSensor.kill()
+        portActuator.kill()
+        portAI.kill()
+        portSL.kill()
 
         raise e
     
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
