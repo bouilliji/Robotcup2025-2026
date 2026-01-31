@@ -7,10 +7,9 @@ import subprocess
 
 # Create handler to show log
 console = logging.StreamHandler()
-console.setLevel(logging.INFO)  # Set console to info level
 
+logging.getLogger("").setLevel(logging.INFO)
 logging.getLogger("").addHandler(console)
-
 
 class Connection:
     """Connection class to communicate with the raspberry pi
