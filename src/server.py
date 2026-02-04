@@ -1,7 +1,3 @@
-import sys
-
-sys.path.insert(0, "path to /src/")
-
 from api.raspConnection import Connection, create_ports
 
 
@@ -98,7 +94,3 @@ def main():
         portSL.kill()
 
         raise e
-    
-
-if __name__ == "__main__":
-    main()

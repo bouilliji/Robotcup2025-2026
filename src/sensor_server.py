@@ -33,6 +33,3 @@ def main():
         connectionProcesing.send("distanceSensor", DS.get_distance())
 
         time.Sleep(0.01)
-
-if __name__ == "__main__":
-    main()
