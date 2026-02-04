@@ -1,9 +1,6 @@
-import sys
 import time
 from Alphabot_librairy.AlphaBotLineSensor import AlphaBotLineSensor as LineSensor
 from Alphabot_librairy.DistanceSensor import DistanceSensor
-
-sys.path.insert(0, "path to /src/")
 
 from api.raspConnection import Connection
 
@@ -27,9 +24,19 @@ def refined_SL_values(SL):
     return refinedValues
 
 def main():
+    try:
+        connectionProcesing.start()
+    except KeyboardInterrupt:
+
+        connectionProcesing.stop(0)
+    except Exception as e:
+
+        connectionProcesing.stop(2)
+        raise e
+
     while True:
         SLValues = refined_SL_values(SL)
         connectionProcesing.send("lineSensor", SLValues)
-        connectionProcesing.send("distanceSensor", DS.get_distance())
+        #connectionProcesing.send("distanceSensor", DS.get_distance())
 
-        time.Sleep(0.01)
+        time.sleep(0.01)
