@@ -6,11 +6,10 @@ import time
 LS = LineSensor()
 motors = Motors()
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     time.sleep(10)
 
-    motors.setMotor(100,100)
+    motors.setMotor(100, 100)
     motors.forward()
     time.sleep(2)
     motors.backward()
@@ -23,11 +22,10 @@ if __name__ == '__main__':
 
     print("Line follow Example")
     time.sleep(0.5)
-    for i in range(0,400):
+    for i in range(0, 400):
         LS.calibrate()
         print(i)
 
-    
     while True:
         time.sleep(0.5)
         position = LS.AnalogRead()

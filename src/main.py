@@ -1,4 +1,6 @@
-import server, actuator_server, sensor_server
+import server
+import actuator_server
+import sensor_server
 import logging
 import time
 

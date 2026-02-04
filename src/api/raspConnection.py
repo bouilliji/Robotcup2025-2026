@@ -13,6 +13,7 @@ logging.getLogger("").addHandler(console)
 
 new_id = 0
 
+
 class Connection:
     """Connection class to communicate with the raspberry pi
 
@@ -79,7 +80,9 @@ class Connection:
             logging.warning(f"Connection {self.id} : No handler for raw data")
 
         def _defaultMessage(ordre: str, _):
-            logging.warning(f"Connection {self.id} : No handler for ordre {ordre} and no default handler")
+            logging.warning(
+                f"Connection {self.id} : No handler for ordre {ordre} and no default handler"
+            )
 
         self.id = new_id
         self.port = port
@@ -201,7 +204,9 @@ class Connection:
                         data = str(seri.read(size))
                         ordre, donnee = data[2 : len(data) - 1].split("\\r\\n")
 
-                        logging.info(f"Connection {self.id} : Data received: {ordre}\r\n{donnee}")
+                        logging.info(
+                            f"Connection {self.id} : Data received: {ordre}\r\n{donnee}"
+                        )
 
                         # call the right handler function
                         if ordre in self.handlers:
@@ -221,7 +226,9 @@ class Connection:
                         size = int(seri.read(int(data[3:]) + 6))
                         data = seri.read(size)
 
-                        logging.info(f"Connection {self.id} : Raw data received: \r\n{data}")
+                        logging.info(
+                            f"Connection {self.id} : Raw data received: \r\n{data}"
+                        )
 
                         # Handle raw data in a separate thread
                         handler_thread = threading.Thread(
@@ -231,12 +238,16 @@ class Connection:
                         handler_thread.start()
 
                     elif data[:3] == b"EXT":
-                        logging.info(f"Connection {self.id} : Exited with code: {data[3:]}")
+                        logging.info(
+                            f"Connection {self.id} : Exited with code: {data[3:]}"
+                        )
 
                         self.state = (data[3:] == b"0") + 1
                         return int(str(data[3:]))
                     else:
-                        logging.error(f"Connection {self.id} : Received an unknown header: {data}")
+                        logging.error(
+                            f"Connection {self.id} : Received an unknown header: {data}"
+                        )
 
                     # handling response
                     if len(self.toSend) > 0:
