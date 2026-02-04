@@ -281,6 +281,9 @@ class Connection:
 
         logging.info("Started !")
 
+        set.write(f"EXT{self.exitCode}\r\n".encode("utf-8"))
+
+        self.state = 1
         return self.exitCode
 
     def stop(self, code):

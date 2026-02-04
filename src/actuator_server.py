@@ -1,4 +1,5 @@
 import sys
+import time
 from Alphabot_librairy.AlphaBotMotors import AlphaBotMotors as Motors
 
 sys.path.insert(0, "path to /src/")

@@ -4,7 +4,7 @@ import RPi.GPIO as GPIO
 
 class DistanceSensor:
 
-    def __init__(self, trigPin=18, echoPin=23):
+    def __init__(self, trigPin=18, echoPin=17):
         self.echoPin = echoPin
         self.trigPin = trigPin
 
