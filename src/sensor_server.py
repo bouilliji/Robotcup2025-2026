@@ -6,7 +6,7 @@ from Alphabot_lib.DistanceSensor import DistanceSensor
 
 from api.raspConnection import Connection
 
-connectionProcesing = Connection("/tmp/ttyV1")
+connectionProcesing = Connection("/tmp/ttyV1", "sensor -> server")
 
 SL = LineSensor()
 DS = DistanceSensor()

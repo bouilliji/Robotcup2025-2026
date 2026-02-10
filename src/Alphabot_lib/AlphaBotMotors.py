@@ -24,6 +24,9 @@ class AlphaBotMotors(object):
         self.PWMA.start(50)
         self.PWMB.start(50)
 
+        self.PWMB.ChangeDutyCycle(0)
+        self.PWMA.ChangeDutyCycle(0)
+
     def forward(self):
         GPIO.output(self.IN1, GPIO.LOW)
         GPIO.output(self.IN2, GPIO.HIGH)

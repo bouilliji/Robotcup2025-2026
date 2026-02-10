@@ -7,10 +7,10 @@ portActuator = create_ports("/tmp/ttyV2", "/tmp/ttyV3")
 portAI = create_ports("/tmp/ttyV4", "/tmp/ttyV5")
 portSL = create_ports("/tmp/ttyV6", "/tmp/ttyV7")
 
-connectionSensor = Connection("/tmp/ttyV0")
-connectionActuator = Connection("/tmp/ttyV2")
-connectionAI = Connection("/tmp/ttyV4")
-connectionSL = Connection("/tmp/ttyV6")
+connectionSensor = Connection("/tmp/ttyV0", "server -> sensor")
+connectionActuator = Connection("/tmp/ttyV2", "server -> actuator")
+connectionAI = Connection("/tmp/ttyV4", "server -> AI")
+connectionSL = Connection("/tmp/ttyV6", "server -> SL")
 
 mode = "followed by line"
 

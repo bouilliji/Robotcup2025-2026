@@ -3,7 +3,7 @@ from Alphabot_lib.AlphaBotMotors import AlphaBotMotors as Motors
 
 from api.raspConnection import Connection
 
-connectionProcesing = Connection("/tmp/ttyV3")
+connectionProcesing = Connection("/tmp/ttyV3", "actuator -> server")
 
 motor = Motors()
 
@@ -17,6 +17,7 @@ def motor_process(data):
 def motor_while_process(data):
     motor.setMotor(data["left"], data["right"])
     time.sleep(data["time"])
+    motor.setMotor(0, 0)
     motor.stop()
 
 

@@ -1,22 +1,25 @@
 import server
 import actuator_server
-import sensor_server
 import logging
 import time
 from api.raspConnection import Connection
 
-conn = Connection("/tmp/ttyV7")
+conn = Connection("/tmp/ttyV7", "SL -> server")
 
 if __name__ == "__main__":
     server.main()
     time.sleep(1)
     actuator_server.main()
-    sensor_server.main()
+    # sensor_server.main()
 
-    logging.info("Server starting...")
+    logging.info("Server SL starting...")
 
     conn.start()
 
-    conn.send("motorWhile", {"left": 100, "right": 100, "time": 10})
+    time.sleep(2)
+
+    conn.send("motorWhile", {"left": -100, "right": -100, "time": 10})
+
+    time.sleep(1)
 
     conn.stop(0)
