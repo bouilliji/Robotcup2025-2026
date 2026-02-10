@@ -7,9 +7,11 @@ import subprocess
 
 # Create handler to show log
 console = logging.StreamHandler()
-console.setLevel(logging.INFO)  # Set console to info level
 
+logging.getLogger("").setLevel(logging.INFO)
 logging.getLogger("").addHandler(console)
+
+new_id = 0
 
 
 class Connection:
@@ -65,20 +67,24 @@ class Connection:
         def __len__(self):
             return len(str(self))
 
-    def __init__(self, port: str):
+    def __init__(self, port: str, name: str = None):
         """Create a new connection
         Arguments:
             port {str} -- port to connect to
         Raises:
             TypeError: if either port is not a string or dbLevel is not a DebugLevel
         """
+        global new_id
 
         def _defaultRaw(_):
-            logging.warning("No handler for raw data")
+            logging.warning(f"Connection {self.name} : No handler for raw data")
 
         def _defaultMessage(ordre: str, _):
-            logging.warning(f"No handler for ordre {ordre} and no default handler")
+            logging.warning(
+                f"Connection {self.name} : No handler for ordre {ordre} and no default handler"
+            )
 
+        self.id = new_id
         self.port = port
         self.toSend = []
         self.state = 1  # 0 = running, 1 = stopped, 2 = error
@@ -88,6 +94,13 @@ class Connection:
         self.onRaw = _defaultRaw
         self.onMessage = _defaultMessage
         self.handlers = dict()
+
+        if name is not None:
+            self.name = name + " " * (20 - len(name))
+        else:
+            self.name = self.id
+
+        new_id += 1
 
     def on(self, ordre: str):
         """Decorator to add a handler for a specific ordre
@@ -131,6 +144,8 @@ class Connection:
             raise TypeError("Error: ordre must be a string")
         self.toSend.append(Connection.Message(ordre, data))
 
+        logging.info(f"Connection {self.name} : send {ordre}")
+
     def sendRaw(self, data) -> None:
         """Send raw data to the raspberry pi
         Arguments:
@@ -141,6 +156,8 @@ class Connection:
         if not isinstance(data, bytes):
             raise TypeError("Error: raw data must be bytes")
         self.toSend.append(data)
+
+        logging.info(f"Connection {self.name} : send raw data")
 
     def isRunning(self) -> bool:
         """Verify if the connection is still running
@@ -171,7 +188,7 @@ class Connection:
         if not isinstance(baudrate, int):
             raise TypeError("Error: baudrate must be an integer")
 
-        logging.info("Starting...")
+        logging.info(f"Connection {self.name} : Starting...")
 
         # open serial connection
         seri = serial.Serial(self.port, baudrate)
@@ -185,7 +202,7 @@ class Connection:
             while self.isRunning():
                 if seri.in_waiting != 0:
                     data = seri.read(4)  # header of packet /in {DAT0, RAW0, PING, EXT0}
-                    logging.info(f"Packet received: {data}")
+                    logging.info(f"Connection {self.name} : Packet received: {data}")
 
                     # handling incoming packet
                     if data == b"PING":
@@ -196,7 +213,9 @@ class Connection:
                         data = str(seri.read(size))
                         ordre, donnee = data[2 : len(data) - 1].split("\\r\\n")
 
-                        logging.info(f"Data received: {ordre}\r\n{donnee}")
+                        logging.info(
+                            f"Connection {self.name} : Data received: {ordre}\r\n{donnee}"
+                        )
 
                         # call the right handler function
                         if ordre in self.handlers:
@@ -216,7 +235,9 @@ class Connection:
                         size = int(seri.read(int(data[3:]) + 6))
                         data = seri.read(size)
 
-                        logging.info(f"Raw data received: \r\n{data}")
+                        logging.info(
+                            f"Connection {self.name} : Raw data received: \r\n{data}"
+                        )
 
                         # Handle raw data in a separate thread
                         handler_thread = threading.Thread(
@@ -226,12 +247,16 @@ class Connection:
                         handler_thread.start()
 
                     elif data[:3] == b"EXT":
-                        logging.info(f"Exited with code: {data[3:]}")
+                        logging.info(
+                            f"Connection {self.name} : Exited with code: {data[3:]}"
+                        )
 
                         self.state = (data[3:] == b"0") + 1
                         return int(str(data[3:]))
                     else:
-                        logging.error(f"Received an unknown header: {data}")
+                        logging.error(
+                            f"Connection {self.name} : Received an unknown header: {data}"
+                        )
 
                     # handling response
                     if len(self.toSend) > 0:
@@ -240,11 +265,11 @@ class Connection:
                             size = len(data)
                             if size > 1e9:
                                 logging.warning(
-                                    "Data too big, message not sent, size > 1e9"
+                                    f"Connection {self.name} : Data too big, message not sent, size > 1e9"
                                 )
                                 continue
 
-                            logging.info(f"Data sent: {data}")
+                            logging.info(f"Connection {self.name} : Data sent: {data}")
                             seri.write(
                                 f"DAT{len(str(size))}\r\n{size}\r\n\r\n{data}".encode(
                                     "utf-8"
@@ -254,11 +279,11 @@ class Connection:
                             size = len(data)
                             if size > 1e9:
                                 logging.warning(
-                                    "Data too big, message not sent, size > 1e9"
+                                    f"Connection {self.name} : Data too big, message not sent, size > 1e9"
                                 )
                                 continue
 
-                            logging.info(f"Data sent: {data}")
+                            logging.info(f"Connection {self.name} : Data sent: {data}")
 
                             if isinstance(data, str):
                                 data = data.encode("utf-8")
@@ -271,7 +296,7 @@ class Connection:
                         seri.write(b"PING")
                     seri.flush()
                 else:
-                    logging.warning("No response")
+                    logging.warning(f"Connection {self.name} : No response")
                     time.sleep(0.1)
 
                 time.sleep(0.1)
@@ -280,7 +305,7 @@ class Connection:
         listener_thread = threading.Thread(target=listen_for_data)
         listener_thread.start()
 
-        logging.info("Started !")
+        logging.info(f"Connection {self.name} : Started !")
 
         return self.exitCode
 
@@ -301,7 +326,7 @@ class Connection:
         if code < 0 or code > 9:
             raise ValueError("Error: code must be between 0 and 9")
 
-        logging.info("Stopping...")
+        logging.info(f"Connection {self.name} : Stopping...")
 
         self.exitCode = code
         if code == 0:
