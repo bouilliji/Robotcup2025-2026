@@ -1,4 +1,6 @@
 import time
+import threading
+
 from Alphabot_lib.AlphaBotLineSensor import AlphaBotLineSensor as LineSensor
 from Alphabot_lib.DistanceSensor import DistanceSensor
 
@@ -25,6 +27,15 @@ def refined_SL_values(SL):
     return refinedValues
 
 
+def send_SL_value():
+    while True:
+        SLValues = refined_SL_values(SL)
+        connectionProcesing.send("lineSensor", SLValues)
+        # connectionProcesing.send("distanceSensor", DS.get_distance())
+
+        time.sleep(0.01)
+
+
 def main():
     try:
         connectionProcesing.start()
@@ -34,9 +45,5 @@ def main():
         connectionProcesing.stop(2)
         raise e
 
-    while True:
-        SLValues = refined_SL_values(SL)
-        connectionProcesing.send("lineSensor", SLValues)
-        # connectionProcesing.send("distanceSensor", DS.get_distance())
-
-        time.sleep(0.01)
+    thread = threading.Thread(target=send_SL_value)
+    thread.start()
