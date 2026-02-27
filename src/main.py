@@ -5,6 +5,7 @@ import sensor_server
 
 import logging
 import time
+import sensor_server
 from api.raspConnection import Connection
 
 if __name__ == "__main__":
@@ -12,8 +13,11 @@ if __name__ == "__main__":
     time.sleep(1)
     actuator_server.main()
     sensor_server.main()
+<<<<<<< HEAD
     Robot = line_server.Robot()
     Robot.main()
+=======
+>>>>>>> e82de28 (Fix line sensor)
 
 
 
