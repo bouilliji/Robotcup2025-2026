@@ -1,24 +1,19 @@
 import RPi.GPIO as GPIO
-
-CS = 5
-Clock = 25
-Address = 24
-DataOut = 23
+import time
 
 
 class AlphaBotLineSensor(object):
     def __init__(self, numSensors=5):
-        CS = 5
-        Clock = 25
-        Address = 24
-        DataOut = 23
+        self.CS = 5
+        self.Clock = 25
+        self.Address = 24
+        self.DataOut = 23
 
         GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)
-        GPIO.setup(Clock, GPIO.OUT)
-        GPIO.setup(Address, GPIO.OUT)
-        GPIO.setup(CS, GPIO.OUT)
-        GPIO.setup(DataOut, GPIO.IN, GPIO.PUD_UP)
+        GPIO.setup(self.Clock, GPIO.OUT)
+        GPIO.setup(self.Address, GPIO.OUT)
+        GPIO.setup(self.CS, GPIO.OUT)
+        GPIO.setup(self.DataOut, GPIO.IN, GPIO.PUD_UP)
 
         self.numSensors = numSensors
         self.calibratedMin = [0] * self.numSensors
@@ -37,35 +32,41 @@ class AlphaBotLineSensor(object):
 	"""
 
     def AnalogRead(self):
-        value = [0, 0, 0, 0, 0, 0]
-        # Read Channel0~channel4 AD value
+        value = [0] * 6
         for j in range(0, 6):
-            GPIO.output(CS, GPIO.LOW)
+            GPIO.output(self.CS, GPIO.LOW)
+            time.sleep(0.00001)
+
+            # Envoi de l'adresse (4 bits)
             for i in range(0, 4):
-                # sent 4-bit Address
                 if ((j) >> (3 - i)) & 0x01:
-                    GPIO.output(Address, GPIO.HIGH)
+                    GPIO.output(self.Address, GPIO.HIGH)
                 else:
-                    GPIO.output(Address, GPIO.LOW)
-                # read MSB 4-bit data
+                    GPIO.output(self.Address, GPIO.LOW)
+
+                # On lit la donnée entrante pendant qu'on envoie l'adresse
+                GPIO.output(self.Clock, GPIO.HIGH)
                 value[j] <<= 1
-                if GPIO.input(DataOut):
+                if GPIO.input(self.DataOut):
                     value[j] |= 0x01
-                GPIO.output(Clock, GPIO.HIGH)
-                GPIO.output(Clock, GPIO.LOW)
+                GPIO.output(self.Clock, GPIO.LOW)
+
+            # Lecture des 6 bits restants (pour faire 10 bits total)
             for i in range(0, 6):
-                # read LSB 8-bit data
+                GPIO.output(self.Clock, GPIO.HIGH)
                 value[j] <<= 1
-                if GPIO.input(DataOut):
+                if GPIO.input(self.DataOut):
                     value[j] |= 0x01
-                GPIO.output(Clock, GPIO.HIGH)
-                GPIO.output(Clock, GPIO.LOW)
-            # no mean ,just delay
+                GPIO.output(self.Clock, GPIO.LOW)
+
+            # Cycle de fin pour laisser la puce respirer
             for i in range(0, 6):
-                GPIO.output(Clock, GPIO.HIGH)
-                GPIO.output(Clock, GPIO.LOW)
-            # time.sleep(0.0001)
-            GPIO.output(CS, GPIO.HIGH)
+                GPIO.output(self.Clock, GPIO.HIGH)
+                GPIO.output(self.Clock, GPIO.LOW)
+
+            GPIO.output(self.CS, GPIO.HIGH)
+            time.sleep(0.0001)
+
         return value[1:]
 
     """
