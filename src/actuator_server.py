@@ -27,7 +27,9 @@ def main():
 
     except KeyboardInterrupt:
         connectionProcesing.stop(0)
+        motor.stop()
 
     except Exception as e:
         connectionProcesing.stop(2)
+        motor.stop()
         raise e

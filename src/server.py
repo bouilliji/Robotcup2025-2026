@@ -12,7 +12,7 @@ connectionActuator = Connection("/tmp/ttyV2", "server -> actuator")
 connectionAI = Connection("/tmp/ttyV4", "server -> AI")
 connectionSL = Connection("/tmp/ttyV6", "server -> SL")
 
-mode = "followed by line"
+mode = 0  # 0: line following / 1: ball retrievement
 
 
 @connectionSensor.on("lineSensor")
@@ -43,31 +43,32 @@ def distance_sensor(data):
 
 @connectionSL.on("motor")
 def motor_sl(data):
-    if mode == "followed by line":
+    print(data)
+    if mode == 0:
         connectionActuator.send("motor", data)
 
 
 @connectionSL.on("motorWhile")
 def motor_while_sl(data):
-    if mode == "followed by line":
+    if mode == 0:
         connectionActuator.send("motorWhile", data)
 
 
 @connectionAI.on("motor")
 def motor_ai(data):
-    if mode == "ball collection":
+    if mode == 1:
         connectionActuator.send("motor", data)
 
 
 @connectionAI.on("motorWhile")
 def motor_while_ai(data):
-    if mode == "ball collection":
+    if mode == 1:
         connectionActuator.send("motorWhile", data)
 
 
 @connectionAI.on("servoMotor")
 def servo_motor(data):
-    if mode == "ball collection":
+    if mode == 1:
         connectionActuator.send("servoMotor", data)
 
 

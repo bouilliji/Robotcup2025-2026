@@ -1,4 +1,5 @@
 import threading
+import time
 from api.raspConnection import Connection
 
 
@@ -11,11 +12,28 @@ def sign(number):
         return 0
 
 
-class Robot:
-    conn = Connection("/tmp/ttyV7")
+conn = Connection("/tmp/ttyV7", "SL -> server")
 
+c1 = 0
+c2 = 0
+c3 = 0
+c4 = 0
+c5 = 0
+
+
+@conn.on("lineSensor")
+def get_capteur(data):
+    global c1, c2, c3, c4, c5
+
+    c1 = data[0]
+    c2 = data[1]
+    c3 = data[2]
+    c4 = data[3]
+    c5 = data[4]
+
+
+class Robot:
     def __init__(self):
-        self.conn = Connection("/tmp/ttyV7")
         self.erreur = 0
         self.last_erreur = 0
         self.p = 0
@@ -32,27 +50,23 @@ class Robot:
         self.v_viser = 200
         self.treeth_turn = 1.5
 
-    @conn.on("lineSensor")
-    def get_capteur(self, data):
-        self.c1 = data[0]
-        self.c2 = data[1]
-        self.c3 = data[2]
-        self.c4 = data[3]
-        self.c5 = data[4]
-
     def pid(self):
-        capteur_on = self.c2 + self.c3 + self.c4 + self.c5
-        val_capteur = self.c2 * 2 + self.c3 - self.c4 - self.c5 * 2
-        erreur = val_capteur / capteur_on if capteur_on > 0 else 0
+        somme_capteurs = c1 + c2 + c3 + c4 + c5
 
-        self.p = erreur
-        self.i += erreur
-        self.d = erreur - self.last_erreur
-        self.last_erreur = erreur
+        if somme_capteurs > 0:
+            val_capteur = (c1 * 2) + c2 - c4 - (c5 * 2)
 
-        self.actu_i(self.erreur, self.last_erreur)
+            self.erreur = val_capteur / somme_capteurs
 
-        if erreur == 0:
+            self.p = self.erreur
+            self.i += self.erreur
+            self.d = self.erreur - self.last_erreur
+            self.last_erreur = self.erreur
+            self.actu_i(self.erreur, self.last_erreur)
+
+            self.aplication_pid()
+            self.direc = 0
+        else:
             if self.last_erreur >= self.treeth_turn or self.direc == 1:
                 self.v_d = 250
                 self.v_g = -250
@@ -61,9 +75,6 @@ class Robot:
                 self.v_d = -250
                 self.v_g = 250
                 self.direc = 2
-        else:
-            self.aplication_pid()
-            self.direc = 0
 
     def aplication_pid(self):
         coef = self.kp * self.p + self.ki * self.i + self.kd * self.d
@@ -75,17 +86,16 @@ class Robot:
             self.i = 0
 
     def motor(self):
-        self.conn.send("motor", {"left": self.v_g, "right": self.v_d})
+        conn.send("motor", {"left": self.v_g, "right": self.v_d})
 
     def loupe(self):
         while True:
-            self.get_capteur()
             self.pid()
             self.motor()
 
+            time.sleep(0.01)
+
     def main(self):
+        conn.start()
         thread = threading.Thread(target=self.loupe)
         thread.start()
-
-
-Rob = Robot()

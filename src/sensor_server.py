@@ -18,10 +18,10 @@ def refined_SL_values(SL):
     refinedValues = []
 
     for value in values:
-        if value > 500.0:
+        if value < 500.0:
             refinedValues.append(1)
 
-        elif value <= 500.0:
+        elif value >= 500.0:
             refinedValues.append(0)
 
     return refinedValues
