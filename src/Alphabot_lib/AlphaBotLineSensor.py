@@ -1,5 +1,9 @@
 import RPi.GPIO as GPIO
 import time
+import json
+import os
+
+path = os.path.abspath(r"Alphabot_lib/donnees_utilisateur.json")
 
 
 class AlphaBotLineSensor(object):
@@ -16,8 +20,10 @@ class AlphaBotLineSensor(object):
         GPIO.setup(self.DataOut, GPIO.IN, GPIO.PUD_UP)
 
         self.numSensors = numSensors
-        self.calibratedMin = [0] * self.numSensors
-        self.calibratedMax = [1023] * self.numSensors
+        with open(path, "r", encoding="utf-8") as fichier:
+            donnees = json.load(fichier)
+            self.calibratedMin = donnees["calibrateMin"]
+            self.calibratedMax = donnees["calibrateMax"]
         self.last_value = 0
 
     """
@@ -97,6 +103,14 @@ class AlphaBotLineSensor(object):
                 self.calibratedMin[i] = min_sensor_values[i]
             if max_sensor_values[i] < self.calibratedMax[i]:
                 self.calibratedMax[i] = max_sensor_values[i]
+
+        donnees = {
+            "calibrateMin": self.calibratedMin,
+            "calibrateMax": self.calibratedMax,
+        }
+
+        with open(path, "w") as fichier:
+            json.dump(donnees, fichier, indent=4)
 
     """
 	Returns values calibrated to a value between 0 and 1000, where

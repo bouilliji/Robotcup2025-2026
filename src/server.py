@@ -79,17 +79,6 @@ def main():
         connectionAI.start()
         connectionSL.start()
 
-    except KeyboardInterrupt:
-        connectionSensor.stop(0)
-        connectionActuator.stop(0)
-        connectionAI.stop(0)
-        connectionSL.stop(0)
-
-        portSensor.kill()
-        portActuator.kill()
-        portAI.kill()
-        portSL.kill()
-
     except Exception as e:
         connectionSensor.stop(2)
         connectionActuator.stop(2)
@@ -102,3 +91,15 @@ def main():
         portSL.kill()
 
         raise e
+
+
+def stop():
+    connectionSensor.stop(0)
+    connectionActuator.stop(0)
+    connectionAI.stop(0)
+    connectionSL.stop(0)
+
+    portSensor.kill()
+    portActuator.kill()
+    portAI.kill()
+    portSL.kill()

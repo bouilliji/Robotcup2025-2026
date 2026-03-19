@@ -11,6 +11,14 @@ connectionProcesing = Connection("/tmp/ttyV1", "sensor -> server")
 SL = LineSensor()
 DS = DistanceSensor()
 
+for i in range(0, 100):
+    time.sleep(0.1)
+    SL.calibrate()
+    print(i)
+
+thread = None
+stop_event = threading.Event()
+
 
 def refined_SL_values(SL):
     values = SL.readCalibrated()
@@ -18,10 +26,10 @@ def refined_SL_values(SL):
     refinedValues = []
 
     for value in values:
-        if value < 500.0:
+        if value > 500.0:
             refinedValues.append(1)
 
-        elif value >= 500.0:
+        elif value <= 500.0:
             refinedValues.append(0)
 
     return refinedValues
@@ -37,13 +45,20 @@ def send_SL_value():
 
 
 def main():
+    global thread
+
     try:
         connectionProcesing.start()
-    except KeyboardInterrupt:
-        connectionProcesing.stop(0)
     except Exception as e:
         connectionProcesing.stop(2)
         raise e
 
     thread = threading.Thread(target=send_SL_value)
     thread.start()
+
+
+def stop():
+    stop_event.set()
+    if thread:
+        thread.join()
+    connectionProcesing.stop(0)

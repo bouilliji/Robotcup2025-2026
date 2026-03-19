@@ -7,7 +7,7 @@ date = str(datetime.datetime.now()).replace(" ", "_").replace(":", ",")
 logging.basicConfig(
     filename=f"./../logs/{date}.log",  # Log file path
     filemode="w",
-    datefmt="%d-%m %H:%M",
+    datefmt="%d-%m %H:%M:%S",
     format="%(asctime)s %(name)-12s %(levelname)-8s %(message)s",
     level=logging.INFO,  # Set to info level globally
 )

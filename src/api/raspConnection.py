@@ -142,7 +142,7 @@ class Connection:
         """
         if not isinstance(ordre, str):
             raise TypeError("Error: ordre must be a string")
-        self.toSend.append(Connection.Message(ordre, data))
+        self.toSend = [Connection.Message(ordre, data)]
 
         logging.info(f"Connection {self.name} : send {ordre}")
 
@@ -155,7 +155,7 @@ class Connection:
         """
         if not isinstance(data, bytes):
             raise TypeError("Error: raw data must be bytes")
-        self.toSend.append(data)
+        self.toSend = [data]
 
         logging.info(f"Connection {self.name} : send raw data")
 
@@ -297,9 +297,9 @@ class Connection:
                     seri.flush()
                 else:
                     logging.warning(f"Connection {self.name} : No response")
-                    time.sleep(0.1)
+                    time.sleep(0.01)
 
-                time.sleep(0.1)
+                time.sleep(0.01)
 
         # Create a thread for listening to incoming data
         listener_thread = threading.Thread(target=listen_for_data)

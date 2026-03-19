@@ -2,7 +2,7 @@ import RPi.GPIO as GPIO
 
 
 class AlphaBotMotors(object):
-    def __init__(self, in1=12, in2=13, ena=6, in3=20, in4=21, enb=26):
+    def __init__(self, in1=13, in2=12, ena=6, in3=20, in4=21, enb=26):
         self.IN1 = in1
         self.IN2 = in2
         self.IN3 = in3
