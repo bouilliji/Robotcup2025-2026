@@ -1,3 +1,5 @@
+adafruit-blinka
+adafruit-circuitpython-tcs34725
 opencv-python>=4.13
 pre-commit==4.2.0
 pyserial>=3.5
