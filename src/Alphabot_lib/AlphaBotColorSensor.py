@@ -1,11 +1,9 @@
-import board
 import adafruit_tcs34725
 
 
 class ColorSensor:
-    def __init__(self):
-        i2c = board.I2C()
-        self.sensor = adafruit_tcs34725.TCS34725(i2c)
+    def __init__(self, channel):
+        self.sensor = adafruit_tcs34725.TCS34725(channel)
 
     def isWhite(self):
         return self.sensor.lux > 3000 and min(self.sensor.color_raw) > 15
