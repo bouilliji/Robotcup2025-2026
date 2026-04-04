@@ -12,6 +12,7 @@ import board
 import busio
 
 # Object Detection
+from picamera2 import Picamera2 as Picam
 from ultralytics import YOLO
 
 # General
@@ -34,6 +35,9 @@ optical_sensor = adafruit_vl53l0x.VL53L0X(tca[2])
 
 # Initialize line sensor
 SL = LineSensor()
+
+# Initialize camera
+picam = Picam()
 
 # Initialize motors
 motor = Motors()
@@ -131,6 +135,9 @@ class Robot:
         # Set servo motors to basic position
         servo_pliers.start(100)
         servo_raising.start(175)
+
+        # Start camera
+        picam.start()
 
     def update_line_sensor(self):
         """Update the value of the line sensor."""
@@ -242,8 +249,7 @@ class Robot:
                 self.motor()
                 time.sleep(0.01)
             elif self.mode == "arena":
-                # mode arène
-                print("mode arène")
+                print("code mode arène")
 
     def stop(self):
         """Stop the servo motors carefully."""
