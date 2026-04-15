@@ -2,7 +2,7 @@
 # Alphabot library
 from Alphabot_lib.AlphaBotLineSensor import AlphaBotLineSensor as LineSensor
 from Alphabot_lib.AlphaBotMotors import AlphaBotMotors as Motors
-from Alphabot_lib.AlphabotServoMotors import ServoMotors
+from Alphabot_lib.AlphabotServoMotors import ServoMotors, ServoType
 from Alphabot_lib.AlphaBotColorSensor import ColorSensor
 from Alphabot_lib.AlphaBotCamera import Camera
 
@@ -27,10 +27,6 @@ import argparse
 i2c = busio.I2C(board.SCL, board.SDA)
 tca = TCA9548A(i2c)
 
-# Initialize TCS34725 color sensors
-color_sensor_left = ColorSensor(tca[0])
-time.sleep(0.1)
-color_sensor_right = ColorSensor(tca[1])
 
 # Initialize VL53L0X optical sensor
 # optical_sensor = adafruit_vl53l0x.VL53L0X(tca[2])
@@ -82,6 +78,7 @@ class Robot:
         self.model = YOLO(r"/home/athena/dev/Robotcup2025-2026/src/last.onnx")
 
         self.cam = Camera()
+        # self.cam = None
 
         # Initialize motors
         self.motor = Motors()
@@ -90,11 +87,18 @@ class Robot:
         # self.picam = Camera()
 
         # Initialize servo motors
-        self.servo_pliers = ServoMotors(22, 50)
-        self.servo_raising = ServoMotors(27, 100)
+        self.servo_pliers = ServoMotors(27, 50, ServoType.SMALL)
+        self.servo_raising = ServoMotors(22, 50, ServoType.BIG)
         ######
 
-        # self.model = YOLO(model_path)  # initialize model
+        # Initialize TCS34725 color sensors
+        self.color_l = ColorSensor(tca[0])
+        time.sleep(0.1)
+        self.color_r = ColorSensor(tca[1])
+
+        self.color_l.sensor.integration_time = 100  # In milliseconds
+
+        self.color_r.sensor.integration_time = 100  # In milliseconds
 
         self.mode = (
             mode  # Set mode at start || arena : to catch ball | line : to follow a line
@@ -130,7 +134,7 @@ class Robot:
         self.v_g = 0
         self.v_max = 100
         self.v_min = -100
-        self.v_viser = 30
+        self.v_viser = 15
         self.v_curve = 0
         self.v_straight = 0
         ######
@@ -139,8 +143,8 @@ class Robot:
         self.stop_event = threading.Event()
 
         # Set servo motors to basic position
-        self.servo_pliers.start(100)
-        # self.servo_raising.start(175)
+        self.servo_pliers.start(0)
+        self.servo_raising.start(0)
 
         # Start camera
         # self.picam.start()
@@ -210,14 +214,18 @@ class Robot:
     def color_sensor_actions(self):
         """Actions to do from what color sensors see."""
 
-        if color_sensor_left.isGreen() and color_sensor_right.isGreen():
+        if self.color_l.isGreen() and self.color_r.isGreen():
+            print("u turn")
             self.u_turn()
-        elif color_sensor_left.isGreen():
+        elif self.color_l.isGreen():
+            print("turn l")
             self.ninety_turn(-1)
-        elif color_sensor_right.isGreen():
+        elif self.color_r.isGreen():
+            print("turn r")
             self.ninety_turn(1)
-        elif color_sensor_left.isRed() or color_sensor_right.isRed():
-            self.mode = "arena"
+        # elif self.color_l.isRed() or self.color_r.isRed():
+        # print("mode arena")
+        # self.mode = "arena"
 
     def dodge_obstacle(self):
         """Dodge a detected obstacle."""
@@ -280,9 +288,14 @@ class Robot:
     def arene_init(self):
         print("arene init")
         self.motor.setMotor(0, 0)
-        # self.slow_servo(self.servo_raising, 3, 100, 175, 0)
-        self.servo_raising.go_to(100)
+        self.raisearm(False)
         self.grab(False)
+
+    def raisearm(self, up):
+        if up:
+            self.servo_raising.go_to(20)
+        else:
+            self.servo_raising.go_to(160)
 
     def slow_servo(self, servo, t, prec, pos_ini, pos_cib):
         # not instant servo turn (temps,nombre d'étape,position initial, position visée)
@@ -302,18 +315,17 @@ class Robot:
 
     def recherche_ball(self):
         while True:
+            print("recherche balls")
             self.motor.setMotor(0, -40)
-            time.sleep(0.35)
+            time.sleep(0.10)
             self.motor.setMotor(0, 0)
             res = self.analyse_yolo()
             ob = self.read_result(res)
             if len(ob) > 0:
                 return
 
-    def test(self):
-        self.grab(not self.state_grab)
-
     def analyse_yolo(self):
+        print("analyse yolo")
         # cam.capture_image()
         pict = self.cam.frame()  # get PIL image
         # self.cam.save() # save cam content
@@ -322,9 +334,9 @@ class Robot:
         # frame = results[0].plot()
 
         # cv2.imwrite("img.png",frame)
-        # pict.save("img.jpg")
-        detected_objects = self.read_result(results)
-        return detected_objects
+        pict.save("img.jpg")
+
+        return results
 
     def dist_milieu(self, x1, x2):
         mid = (x1 + x2) / 2
@@ -372,14 +384,14 @@ class Robot:
 
                 m = min(abs(mid), 100) * 0.01
                 if mid > 30:
-                    self.motor.setMotor(0, -40)
-                    time.sleep(0.15 * m)
+                    self.motor.setMotor(30, -30)
+                    time.sleep(0.2 * m)
                     self.motor.setMotor(0, 0)
                     print("go right")
 
                 elif mid < -30:
-                    self.motor.setMotor(-40, 0)
-                    time.sleep(0.15 * m)
+                    self.motor.setMotor(-30, 30)
+                    time.sleep(0.2 * m)
                     self.motor.setMotor(0, 0)
                     print("go left")
 
@@ -394,10 +406,14 @@ class Robot:
                         return label
 
             else:
+                print("no ball detected")
+                self.motor.setMotor(30, 30)
+                time.sleep(0.2)
                 self.motor.setMotor(0, 0)
 
     def deliver_ball(self, ball_alive):
-        pass
+        while True:
+            pass
 
     def lock_in_ball(self):
         self.motor.setMotor(-40, -40)
@@ -407,6 +423,11 @@ class Robot:
         self.grab(True)
 
         self.has_ball = True
+
+    def test(self):
+        while True:
+            print(self.color_l.all())
+            # print(self.color_r.all())
 
     def main(self):
         """Main action of the robot."""
@@ -421,12 +442,18 @@ class Robot:
                 # self.ninety_turn(-1)
                 # break
             elif self.mode == "arena":
+                print(self.mode)
                 if not self.arene_init_var:
                     self.arene_init()
                     self.arene_init_var = True
 
+                # self.test()
+
                 self.recherche_ball()
                 label = self.grab_ball()
+                time.sleep(1)
+                self.raisearm(True)
+
                 self.deliver_ball(label)
 
     def stop(self):
@@ -443,7 +470,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         choices=["line", "arena"],
-        default="arena",
+        default="line",
         help="Mode de fonctionnement du robot",
     )
 
