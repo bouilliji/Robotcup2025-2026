@@ -30,7 +30,6 @@ class ServoMotors:
 
     def go_to(self, angle: int):
         self.pwm.ChangeDutyCycle(angle_to_percent(angle))
-        time.sleep(1)
 
     def stop(self):
         self.pwm.stop()

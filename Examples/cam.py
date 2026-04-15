@@ -1,17 +1,11 @@
-from ultralytics import YOLO
+import picamera2
 import cv2
+import PIL
 
-model = YOLO("path to Model")
+cam = picamera2.Picamera2()
+cam.start()
 
-
-while True:
-    results = model.predict(source="0", conf=0.5, verbose=False)
-
-    for res in results:
-        box = res.boxes
-        cls = box.cls
-        xywh = box.xywh
-        for i in range(len(cls)):  # pour tout les object detected
-            iden = cls[i].item()
-            donner_pos = xywh[i].tolist()
-            cord = (donner_pos[0], donner_pos[1])  # pos x et y de l'objet
+pict = cam.capture_image()
+pict.save("img.jpg")
+# open("logging.out","w").write(str(pict))
+# open("logging.out","a").write("\n\n"+str(frame))

@@ -6,4 +6,4 @@ pre-commit==4.2.0
 pyserial>=3.5
 pytest==8.3.5
 RPi.GPIO==0.7.1
-ultralytics
+# ultralytics
