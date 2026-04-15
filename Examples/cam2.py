@@ -1,94 +1,81 @@
-import cv2
+import cv2 as cv
 from time import sleep
-from picamera2 import Picamera2
-
-from ultralytics import YOLO
-import threading
 
 
-class Cam:
+
+def grille_pix(px:int, py:int, ecart:int, nb:int):
+    offset = (nb // 2) * ecart
+    
+    pix = []
+    for x in range(nb):
+        for y in range(nb):
+            pix.append((px - offset + x * ecart,
+                        py - offset + y * ecart))
+    return pix
+
+class Camera:
     def __init__(self):
-        self.model = YOLO(r"/home/athena/dev/Robotcup2025-2026/Examples/last.onnx")
+        self.camera = cv.VideoCapture(0)
 
-        self.cam = Picamera2()
-        self.cam.start()
+    def frame(self):
+        ret, frame = self.camera.read()
+        return frame
+    
+    def save(self,frame):
+        cv.imwrite("photo.jpg", frame)
+        
+    def get_pixel_color(self, frame, x, y):
+        b, g, r = frame[y, x]
+        return int(r), int(g), int(b)
+    
+    
+    def grille_verte(self, frame, pixels):
+        vert = 0
+        
+        for x, y in pixels:
+            r, g, b = self.get_pixel_color(frame, x, y)
+            
+            if g > 150 and g > r and g > b:
+                vert += 1
+                
+        return vert > len(pixels)/2
+    
+    def grille_rouge(self, frame, pixels):
+        rouge = 0
+        
+        for x, y in pixels:
+            r, g, b = self.get_pixel_color(frame, x, y)
+            
+            if r > 150 and r > b and r > g:
+                rouge += 1
+                
+        return rouge > len(pixels)/2
 
-        self.frame = cv2.imread("img.png")
+    def release(self):
+        self.camera.release()
+        cv.destroyAllWindows()
 
-        analyse = threading.Thread(target=self.thread, daemon=True)
-        analyse.start()
 
-        self.analyse_yolo()
-
-    def dist_milieu(self, x1, x2):
-        mid = (x1 + x2) / 2
-        return mid - 320
-
-    def read_result(self):
-        self.object = []
-        result = self.results[0]
-
-        for i, box in enumerate(result.boxes):
-            cls_id = int(box.cls)
-            label = self.model.names[cls_id]
-            conf = float(box.conf)
-            x1, y1, x2, y2 = box.xyxy[0].tolist()
-
-            if cls_id == 0:
-                self.object.insert(
-                    0, {"width": abs(y2 - y1), "mid_dist": self.dist_milieu(x1, x2)}
-                )
-            else:
-                self.object.append(
-                    {"width": abs(y2 - y1), "mid_dist": self.dist_milieu(x1, x2)}
-                )
-
-    def go_to_ball(self):
-        if len(self.object) == 0:
-            return
-
-        ball = self.object[0]
-        mid = ball["mid_dist"]
-        width = ball["width"]
-        if mid > 20:
-            print("Droite")
-        elif mid < -20:
-            print("Gauche")
-        else:
-            print("Mid")
-
-    def cam_reader(self):
+if __name__ == "__main__":
+    cam = Camera()
+    
+    gri = grille_pix(100,100,5,10)
+    try:
         while True:
-            pict = self.cam.capture_array()
+            frame = cam.frame()
+            
+            for pix in gri:
+                x,y = pix
+                frame = cam.write_pixel(frame, x, y)
+                
+                
+            cam.save(frame)
 
-            cv2.imwrite("img.png", pict)
-            self.frame = cv2.imread("img.png")
+    except KeyboardInterrupt:
+        print("Arrêt manuel")
 
-    def while_yolo(self):
-        while True:
-            self.analyse_yolo()
-            print("thread yolo")
+    except Exception as e:
+        print(f"Erreur : {e}")
 
-    def analyse_yolo(self):
-        self.results = self.model.predict(self.frame, verbose=False)
-        print("analyse yolo")
-
-    def thread(self):
-        while True:
-            pict = self.cam.capture_array()
-
-            cv2.imwrite("img.png", pict)
-            self.frame = cv2.imread("img.png")
-
-            self.results = self.model.predict(self.frame, verbose=False)
-            print("analyse yolo")
-
-    def main(self):
-        while True:
-            self.read_result()
-            self.go_to_ball()
-            sleep(0.5)
-
-
-cam = Cam()
-cam.main()
+    finally:
+        cam.release() 

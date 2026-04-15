@@ -37,3 +37,13 @@ def refined_SL_values(SL: LineSensor) -> list:
             refinedValues.append(0)
 
     return refinedValues
+
+def grille_pix(px:int, py:int, ecart:int, nb:int):
+    offset = (nb // 2) * ecart
+    
+    pix = []
+    for x in range(nb):
+        for y in range(nb):
+            pix.append((px - offset + x * ecart,
+                        py - offset + y * ecart))
+    return pix

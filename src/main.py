@@ -16,7 +16,7 @@ from ultralytics import YOLO
 import cv2
 
 # General
-from utils import sign, refined_SL_values
+from utils import sign, refined_SL_values , grille_pix
 import threading
 import time
 import argparse
@@ -77,14 +77,11 @@ class Robot:
         """
         self.model = YOLO(r"/home/athena/dev/Robotcup2025-2026/src/last.onnx")
 
-        self.cam = Camera()
-        # self.cam = None
-
         # Initialize motors
         self.motor = Motors()
 
         # Initialize camera
-        # self.picam = Camera()
+        self.cam = Camera()
 
         # Initialize servo motors
         self.servo_pliers = ServoMotors(27, 50, ServoType.SMALL)
@@ -97,7 +94,6 @@ class Robot:
         self.color_r = ColorSensor(tca[1])
 
         self.color_l.sensor.integration_time = 100  # In milliseconds
-
         self.color_r.sensor.integration_time = 100  # In milliseconds
 
         self.mode = (
@@ -146,17 +142,9 @@ class Robot:
         self.servo_pliers.start(0)
         self.servo_raising.start(0)
 
-        # Start camera
-        # self.picam.start()
-
-        self.frame = cv2.imread("img.png")
-
         self.counter = 0
 
-        self.has_ball = False
 
-        # analyse = threading.Thread(target=self.thread, daemon=True)
-        # analyse.start()
 
     def update_line_sensor(self):
         """Update the value of the line sensor."""
@@ -223,12 +211,35 @@ class Robot:
         elif self.color_r.isGreen():
             print("turn r")
             self.ninety_turn(1)
-        # elif self.color_l.isRed() or self.color_r.isRed():
-        # print("mode arena")
-        # self.mode = "arena"
+        elif self.color_l.isRed() or self.color_r.isRed():
+            print("mode arena")
+            self.mode = "arena"
 
     def dodge_obstacle(self):
         """Dodge a detected obstacle."""
+        t = 0.2
+        
+        self.ninety_turn(1)
+        self.motor.setMotor(20,20)
+        time.sleep(t)
+        self.motor.setMotor(0,0)
+        
+        self.ninety_turn(-1)
+        self.motor.setMotor(20,20)
+        time.sleep(t)
+        self.motor.setMotor(0,0)
+        
+        self.ninety_turn(-1)
+        self.motor.setMotor(20,20)
+        time.sleep(t)
+        self.motor.setMotor(0,0)
+        
+        self.ninety_turn(1)
+        self.motor.setMotor(20,20)
+        time.sleep(t)
+        self.motor.setMotor(0,0)
+        
+        
 
     def pid(self):
         """Calculate the speed of the motors with pid"""
@@ -290,6 +301,8 @@ class Robot:
         self.motor.setMotor(0, 0)
         self.raisearm(False)
         self.grab(False)
+        
+        self.captured = 0
 
     def raisearm(self, up):
         if up:
@@ -321,8 +334,9 @@ class Robot:
             self.motor.setMotor(0, 0)
             res = self.analyse_yolo()
             ob = self.read_result(res)
-            if len(ob) > 0:
-                return
+            if len(ob) > 0 :                               #ball detecter
+                if ob[0]["label"]==True or self.captured > 1 : #priosise les ball vivante
+                    return
 
     def analyse_yolo(self):
         print("analyse yolo")
@@ -334,7 +348,7 @@ class Robot:
         # frame = results[0].plot()
 
         # cv2.imwrite("img.png",frame)
-        pict.save("img.jpg")
+        #pict.save("img.jpg")
 
         return results
 
@@ -423,6 +437,33 @@ class Robot:
         self.grab(True)
 
         self.has_ball = True
+        
+    def get_pixel_color(self, frame, x, y):
+        b, g, r = frame[y, x]
+        return int(r), int(g), int(b)
+    
+    
+    def grille_verte(self, frame, pixels):
+        vert = 0
+        
+        for x, y in pixels:
+            r, g, b = self.get_pixel_color(frame, x, y)
+            
+            if g > 150 and g > r and g > b:
+                vert += 1
+                
+        return vert > len(pixels)/2
+    
+    def grille_rouge(self, frame, pixels):
+        rouge = 0
+        
+        for x, y in pixels:
+            r, g, b = self.get_pixel_color(frame, x, y)
+            
+            if r > 150 and r > b and r > g:
+                rouge += 1
+                
+        return rouge > len(pixels)/2
 
     def test(self):
         while True:

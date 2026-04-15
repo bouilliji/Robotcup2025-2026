@@ -16,12 +16,11 @@ class ColorSensor:
         return g > 26
 
     def isRed(self):
-        # print( self.sensor.lux, self.sensor.color_raw[:-1])
-        return (
-            1500 > self.sensor.lux > 100
-            and max(self.sensor.color_raw[:-1]) == self.sensor.color_raw[0]
-            and self.sensor.color_raw[0] > 2
-        )
+        rgb = self.sensor.color_rgb_bytes
+
+        r, g, b = rgb
+
+        return r > 26
 
     def isBlack(self):
         return 500 > self.sensor.lux and max(self.sensor.color_raw[:-1]) < 5
