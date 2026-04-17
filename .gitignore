@@ -212,3 +212,6 @@ logs/
 
 # vscode settings
 .vscode/*
+
+img.jpg
+img.png
