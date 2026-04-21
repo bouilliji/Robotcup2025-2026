@@ -150,9 +150,9 @@ class Robot:
 
         while True:
             if self.mode == "line":
-                color_sensor_actions()
-                pid()
-                init_motor()
+                color_sensor_actions(self)
+                pid(self)
+                init_motor(self)
                 # self.ninety_turn(1)
                 # time.sleep(1)
                 # self.ninety_turn(-1)
@@ -160,17 +160,17 @@ class Robot:
             elif self.mode == "arena":
                 print(self.mode)
                 if not self.arene_init_var:
-                    arene_init()
+                    arene_init(self)
                     self.arene_init_var = True
 
                 # self.test()
 
-                recherche_ball()
-                label = grab_ball()
+                recherche_ball(self)
+                label = grab_ball(self)
                 time.sleep(1)
-                raisearm(True)
+                raisearm(self, True)
 
-                deliver_ball(label)
+                deliver_ball(self, label)
 
     def stop(self):
         """Stop the servo motors carefully."""
