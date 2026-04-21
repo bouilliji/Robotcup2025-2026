@@ -139,3 +139,24 @@ class AlphaBotLineSensor(object):
             sensor_values[i] = value
 
         return sensor_values
+    
+    def refined_SL_values(self) -> list:
+        """Change the line sensor's values in 1 or 0 based on their value
+
+        Parameters
+        ----------
+        SL: LineSensor (object)
+            the number from who to get the sign
+        """
+        values = self.readCalibrated()  # Get values from sensor
+
+        refinedValues = []
+
+        for value in values:
+            if value > 500.0:
+                refinedValues.append(1)
+
+            elif value <= 500.0:
+                refinedValues.append(0)
+
+        return refinedValues

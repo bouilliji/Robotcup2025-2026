@@ -16,10 +16,11 @@ from ultralytics import YOLO
 import cv2
 
 # General
-from utils import sign, refined_SL_values , grille_pix
 import threading
 import time
 import argparse
+from line_following import *
+from arena_mode import *
 ######
 
 ### Initialize sensors and actuator ###
@@ -149,9 +150,9 @@ class Robot:
 
         while True:
             if self.mode == "line":
-                self.color_sensor_actions()
-                self.pid()
-                self.init_motor()
+                color_sensor_actions()
+                pid()
+                init_motor()
                 # self.ninety_turn(1)
                 # time.sleep(1)
                 # self.ninety_turn(-1)
@@ -159,17 +160,17 @@ class Robot:
             elif self.mode == "arena":
                 print(self.mode)
                 if not self.arene_init_var:
-                    self.arene_init()
+                    arene_init()
                     self.arene_init_var = True
 
                 # self.test()
 
-                self.recherche_ball()
-                label = self.grab_ball()
+                recherche_ball()
+                label = grab_ball()
                 time.sleep(1)
-                self.raisearm(True)
+                raisearm(True)
 
-                self.deliver_ball(label)
+                deliver_ball(label)
 
     def stop(self):
         """Stop the servo motors carefully."""
@@ -178,7 +179,7 @@ class Robot:
         self.servo_pliers.stop()
         self.servo_raising.stop()
 
-    def zgueg():
+    def zgueg(self):
         """ntm ta mere la pute"""
 
         self.motor.setMotor(300,-300)

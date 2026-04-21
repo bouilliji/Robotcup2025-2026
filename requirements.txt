@@ -1,9 +1,15 @@
-adafruit-blinka
-adafruit-circuitpython-tcs34725
+adafruit_tcs34725
+adafruit-circuitpython-tca9548a
+
 opencv-python>=4.13
 picamera2
 pre-commit==4.2.0
-pyserial>=3.5
-pytest==8.3.5
+
 RPi.GPIO==0.7.1
-# ultralytics
+
+picamera2
+ultralytics
+
+adafruit-blinka
+
+opencv-python

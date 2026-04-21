@@ -8,6 +8,13 @@ def sign(number: float) -> int:
     ----------
     number: float
         the number from who to get the sign
+
+    >>sign(-2.5)
+    -1
+    >>sign(57)
+    1
+    >>sign(0)
+    0
     """
     if number > 0:
         return 1
@@ -15,28 +22,6 @@ def sign(number: float) -> int:
         return -1
     else:
         return 0
-
-
-def refined_SL_values(SL: LineSensor) -> list:
-    """Change the line sensor's values in 1 or 0 based on their value
-
-    Parameters
-    ----------
-    SL: LineSensor (object)
-        the number from who to get the sign
-    """
-    values = SL.readCalibrated()  # Get values from sensor
-
-    refinedValues = []
-
-    for value in values:
-        if value > 500.0:
-            refinedValues.append(1)
-
-        elif value <= 500.0:
-            refinedValues.append(0)
-
-    return refinedValues
 
 def grille_pix(px:int, py:int, ecart:int, nb:int):
     offset = (nb // 2) * ecart
